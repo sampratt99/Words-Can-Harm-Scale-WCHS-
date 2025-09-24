@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Words Can Harm Scale (WCHS)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-white text-gray-900">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+    const SAMPLE_MEAN = 59.8;
+    const CUTOFF_LOW = 53.9;
+    const CUTOFF_HIGH = 69.1;
+    function formatOneDecimal(x){ return (Math.round(x*10)/10).toFixed(1); }
+    const ITEMS = [
+      "I could be left emotionally scarred by something I read.",
+      "I could be traumatized without ever being touched, just through someone's hurtful words.",
+      "Reading a book can be emotionally damaging, depending on who is reading it.",
+      "A person might develop posttraumatic stress disorder or at least some of its symptoms from something they read",
+      "I should be careful about what I say, as it could permanently damage someone's emotional health.",
+      "Vulnerable people should not be exposed to certain kinds of speech, as this might harm them.",
+      "Even if I try to think about them in a different way, hurtful words could be damaging nonetheless.",
+      "Exposing someone to a triggering idea can seriously damage their mental health.",
+      "There is great power in the words we choose, either to heal others or to permanently harm them.",
+      "Even a simple phrase can be emotionally traumatizing for someone vulnerable.",
+    ];
+    function bandFromScore(score){ if(score<CUTOFF_LOW) return "weak"; if(score<CUTOFF_HIGH) return "moderate"; return "strong"; }
+    function ResultGauge({score, mean}){
+      const clampedScore = Math.max(1, Math.min(100, score));
+      const clampedMean = Math.max(1, Math.min(100, mean));
+      return (<div className="w-full">
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+          <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
+        </div>
+        <div className="relative w-full h-6 rounded-full bg-gray-200 overflow-hidden">
+          <div className="absolute left-0 top-0 h-full bg-gray-900" style={{width:`${clampedScore}%`}} aria-label={`Your score bar filled to ${formatOneDecimal(clampedScore)} out of 100`} />
+          <div className="absolute top-1/2 -translate-y-1/2" style={{left:`${clampedMean}%`}} aria-label={`Sample mean marker at ${formatOneDecimal(clampedMean)} out of 100`}>
+            <div className="w-3 h-3 rounded-full bg-white border-2 border-gray-900 shadow" />
+          </div>
+        </div>
+        <div className="mt-2 flex items-center gap-3 text-xs text-gray-600">
+          <div className="flex items-center gap-2"><div className="w-4 h-2 bg-gray-900 rounded" /><span>Your score</span></div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-white border-2 border-gray-900" /><span>Sample mean ({formatOneDecimal(mean)})</span></div>
+        </div>
+      </div>);}
+    function App(){
+      const [values, setValues] = useState(Array(10).fill(50));
+      const [view, setView] = useState("survey");
+      const mean = useMemo(()=> values.reduce((a,b)=>a+b,0)/values.length, [values]);
+      const band = bandFromScore(mean);
+      useEffect(()=>{ if(view==="results"){ window.scrollTo({top:0, behavior:"smooth"}); } }, [view]);
+      return (<div className="min-h-screen"><div className="max-w-3xl mx-auto px-4 py-10">
+        <header className="mb-8"><h1 className="text-3xl font-semibold tracking-tight">Words Can Harm Scale (WCHS)</h1></header>
+        {view==="survey" ? (<div>
+          <div className="mb-6 p-4 rounded-xl bg-gray-50 border border-gray-200">
+            <p className="text-sm text-gray-700">Instructions: Please read the following statements, and indicate your level of agreement with each one.</p>
+          </div>
+          <ol className="space-y-6 list-decimal list-inside">{ITEMS.map((item, idx)=>(
+            <li key={idx}>
+              <span className="font-medium">{item}</span>
+              <div className="mt-2 flex items-center gap-3">
+                <input type="range" min={1} max={100} step={1} value={values[idx]}
+                  onChange={(e)=>{ const v=Number(e.target.value); setValues(prev=> prev.map((x,i)=> i===idx ? v : x)); }}
+                  className="flex-1 appearance-none h-2 rounded bg-gray-200 accent-gray-800" aria-label={`Item ${idx+1}`} />
+                <span className="w-10 text-right text-sm font-semibold">{values[idx]}</span>
+              </div>
+              <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+                <span>Strongly disagree</span><span>Somewhat disagree</span><span>Neither agree nor disagree</span>
+                <span>Somewhat agree</span><span>Strongly agree</span>
+              </div>
+            </li>))}
+          </ol>
+          <div className="mt-6"><button onClick={()=> setView("results")} className="px-5 py-3 rounded-xl bg-gray-900 text-white hover:bg-black transition">See my results</button></div>
+        </div>) : (<div className="space-y-6">
+          <div className="p-6 rounded-2xl border border-gray-200">
+            <h2 className="text-2xl font-semibold mb-3">Your Results</h2>
+            <ResultGauge score={mean} mean={SAMPLE_MEAN} />
+            <p className="mt-4 text-gray-800">You scored <span className="font-semibold">{formatOneDecimal(mean)}</span> out of 100 on the Words Can Harm Scale, corresponding to a <span className="font-semibold">{band}</span> belief that words can harm.</p>
+          </div>
+          <details className="p-4 rounded-xl bg-gray-50 border border-gray-200">
+            <summary className="cursor-pointer font-medium">How we calculated this</summary>
+            <p className="mt-2 text-sm text-gray-700">Your WCHS score is the mean of your 10 slider responses (1–100). The interpretation of the score is calculated using percentiles from our sample: scores below the 33rd percentile are labeled weak, scores from the 33rd to 67th percentiles are labeled moderate, and scores at or above the 67th percentile are labeled strong.</p>
+          </details>
+          <div className="p-6 rounded-2xl border border-gray-200">
+            <h3 className="text-xl font-semibold mb-2">Want to learn more?</h3>
+            <p className="text-sm text-gray-700">People often debate whether certain forms of speech should be considered harmful, whether in classrooms, online forums, or political discourse. To help study this issue, we created the Words Can Harm Scale (WCHS) as a psychological tool to measure people’s beliefs about the harmfulness of speech. We recently validated the WCHS in an online, nationally representative sample of American adults (<em>N = 956</em>).</p>
+            <p className="mt-2 text-sm text-gray-700">What did we find? People differ widely in their beliefs about whether words can cause lasting psychological harm. Those higher on the WCHS tended to be younger, female, non-White, and politically liberal. People who more strongly believed that words can harm also reported being more anxious and depressed, less resilient, and having more difficulties with emotion regulation. The WCHS was also linked to greater concern for political correctness and support for things like trigger warnings and safe spaces.</p>
+            <p className="mt-3 text-sm">Read the preprint: <a className="underline text-gray-900" href="https://doi.org/10.31234/osf.io/gn7mc_v1" target="_blank" rel="noreferrer">https://doi.org/10.31234/osf.io/gn7mc_v1</a></p>
+          </div>
+          <div className="p-6 rounded-2xl border border-gray-200">
+            <h3 className="text-xl font-semibold mb-2">Cite the Words Can Harm Scale</h3>
+            <p className="text-sm text-gray-700">The Words Can Harm Scale is free to use. Please cite:</p>
+            <p className="mt-2 text-sm text-gray-700">Pratt, S., Jones, P. J., Bellet, B. W., McNally, R. J., & Gray, K. (2025, September 23). <em>Sticks and Stones: Investigating the Belief that Words Can Harm</em>. <a className="underline text-gray-900" href="https://doi.org/10.31234/osf.io/gn7mc_v1" target="_blank" rel="noreferrer"> https://doi.org/10.31234/osf.io/gn7mc_v1</a></p>
+            <p className="mt-2 text-sm text-gray-700">Questions regarding the Words Can Harm Scale can be directed to sampratt@g.ucla.edu</p>
+          </div>
+          <div><button onClick={()=> setView("survey")} className="text-sm text-gray-700 underline">Go back and adjust answers</button></div>
+          <footer className="mt-10 text-xs text-gray-500"><p>This interactive survey is for research/educational purposes and is not a diagnostic tool.</p></footer>
+        </div>)}
+      </div></div>);
+    }
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
